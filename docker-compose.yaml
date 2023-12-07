@@ -1,0 +1,56 @@
+version: '3'
+
+networks:
+  in.net.ex:
+    driver: bridge
+
+services:
+  # Инструкция для api
+  go-proxy-manager:
+    build: .
+    container_name: proxy-manager.in.net.ex
+    environment:
+      - JWT_SECRET=THISISONEBYTEFORLIFE
+    volumes:
+      - ./config/config.yaml:/config.yaml:ro
+    networks:
+      - in.net.ex
+
+  # Инструкция для сборщика прокси 
+  go-proxy-parser:
+    build: ./go-proxy-parcer/
+    container_name: proxy-parcer.in.net.ex
+    volumes:
+      - ./GoAsyncProxyParser/internal/config/config.yaml:/config.yaml:ro
+    networks:
+      - in.net.ex
+    depends_on:
+      - go-proxy-service
+
+  # Иструкция для чекера прокси
+  go-proxy-checker:
+    build: ./go-proxy-checker/
+    container_name: proxy-checker.in.net.ex
+    volumes:
+      - ./GoProxyChecker/pkg/config/config.yaml:/config.yaml:ro
+    networks:
+      - in.net.ex
+    depends_on:
+      - go-proxy-parser
+
+  # Инструкция для базы
+  go-storage:
+    restart: always
+    image: postgres:latest
+    container_name: proxy-storage.in.net.ex
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=qwerty
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - ./database:/var/lib/postgresql/data/pgdata
+    ports:
+      - 5432:5432
+    networks:
+      - in.net.ex
